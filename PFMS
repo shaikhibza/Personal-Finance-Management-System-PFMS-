@@ -1,0 +1,107 @@
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using PFMS.API.Data;
+using PFMS.API.Models;
+
+namespace PFMS.API.Controllers
+{
+    [ApiController]
+    [Route("api/[controller]")]
+    public class TransactionController : ControllerBase
+    {
+        private readonly ApplicationDbContext _context;
+        public TransactionController(ApplicationDbContext context) => _context = context;
+
+        [HttpGet("{userId}")]
+        public async Task<IActionResult> Get(int userId)
+        {
+            var txns = await _context.Transactions
+                .Where(t => t.UserId == userId)
+                .ToListAsync();
+            return Ok(txns);
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> Post([FromBody] Transaction txn)
+        {
+            _context.Transactions.Add(txn);
+            await _context.SaveChangesAsync();
+            return CreatedAtAction(nameof(Get), new { userId = txn.UserId }, txn);
+        }
+    }
+}
+
+
+using Microsoft.EntityFrameworkCore;
+using PFMS.API.Models;
+
+namespace PFMS.API.Data
+{
+    public class ApplicationDbContext : DbContext
+    {
+        public ApplicationDbContext(DbContextOptions<ApplicationDbContext> opts)
+            : base(opts) { }
+
+        public DbSet<User> Users { get; set; }
+        public DbSet<Transaction> Transactions { get; set; }
+    }
+}
+
+
+using System;
+
+namespace PFMS.API.Models
+{
+    public class Transaction
+    {
+        public int TransactionId { get; set; }
+        public DateTime Date { get; set; }
+        public string Type { get; set; }
+        public decimal Amount { get; set; }
+        public string Category { get; set; }
+        public string Description { get; set; }
+
+        // Navigation
+        public int UserId { get; set; }
+        public User User { get; set; }
+    }
+}
+
+using System.Collections.Generic;
+
+namespace PFMS.API.Models
+{
+    public class User
+    {
+        public int UserId { get; set; }
+        public string FullName { get; set; }
+        public string Email { get; set; }
+        public ICollection<Transaction> Transactions { get; set; }
+    }
+}
+
+
+var builder = WebApplication.CreateBuilder(args);
+
+builder.Services.AddDbContext<ApplicationDbContext>(options =>
+    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+builder.Services.AddControllers();
+builder.Services.AddCors();
+
+var app = builder.Build();
+app.UseRouting();
+app.UseCors(x => x.AllowAnyOrigin().AllowAnyMethod().AllowAnyHeader());
+app.MapControllers();
+
+app.Run();
+
+
+
+
+
+
+
+
+
+
+
